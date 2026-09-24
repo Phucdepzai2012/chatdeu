@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI ĐỂU — Local Brain</title>
+<style>
+:root{--bg:#0b0b12;--panel:#13131e;--line:#ffffff14;--text:#f5f5f7;--muted:#aaaabd;--pink:#ff4f87;--pink2:#8b5cf6}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#272044 0,#0b0b12 42%);color:var(--text);font:15px Inter,Arial,sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;background:var(--pink);color:#fff;font-weight:800}button.secondary{background:#ffffff10}button.danger{background:#74263e}.app{max-width:1100px;margin:auto;padding:22px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:#ffffff08;backdrop-filter:blur(12px)}.brand{font-size:24px;font-weight:900}.brand b{color:var(--pink)}.status{font-size:12px;color:var(--muted);margin-top:3px}.grid{display:grid;grid-template-columns:1fr 310px;gap:16px;margin-top:16px}.panel{border:1px solid var(--line);border-radius:18px;background:#ffffff06;overflow:hidden;box-shadow:0 20px 60px #0005}.chat{height:75vh;min-height:600px;display:flex;flex-direction:column}.msgs{flex:1;overflow:auto;padding:18px}.m{display:flex;margin:9px 0}.m.user{justify-content:flex-end}.bubble{max-width:82%;padding:11px 13px;border-radius:16px;white-space:pre-wrap;line-height:1.5}.m.bot .bubble{background:#171723;border:1px solid var(--line)}.m.user .bubble{background:var(--pink)}.bar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}.bar input{flex:1;background:#0f0f18;color:#fff;border:1px solid var(--line);border-radius:12px;padding:11px;outline:0}.side{padding:16px;overflow:auto}.title{font-weight:900;margin-bottom:7px}.small{font-size:12px;line-height:1.55;color:var(--muted)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}.card{padding:10px;border:1px solid var(--line);border-radius:13px;background:#0003}.num{font-size:19px;font-weight:900}.label{font-size:10px;color:var(--muted)}.sec{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.sec textarea,.sec input,.sec select{width:100%;background:#0f0f18;color:#fff;border:1px solid var(--line);border-radius:10px;padding:9px;outline:0}.sec textarea{min-height:90px;resize:vertical}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1}.log{margin-top:10px;max-height:130px;overflow:auto;font-size:11px;color:#aaa}.tip{padding:9px;border-radius:10px;background:#fff6;margin-top:8px;font-size:11px}.hidden{display:none}@media(max-width:800px){.grid{grid-template-columns:1fr}.chat{height:67vh;min-height:500px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div><div class="brand">🤖 AI <b>ĐỂU</b> — Local Brain</div><div class="status" id="status">Chưa tải model</div></div>
+    <div class="row" style="margin:0"><button class="secondary" id="loadBtn">Tải AI</button><button class="danger" id="clearBtn">Xóa nhớ</button></div>
+  </header>
+
+  <div class="grid">
+    <section class="panel chat">
+      <div class="msgs" id="msgs"></div>
+      <div class="bar"><input id="input" placeholder="Nói chuyện với AI..."/><button id="send">GỬI</button></div>
+    </section>
+
+    <aside class="panel side">
+      <div class="title">🧠 Não cục bộ</div>
+      <div class="small">Model chạy trực tiếp trong trình duyệt bằng WebGPU. Không Gemini API, không API key. Lần đầu phải tải model về máy.</div>
+      <div class="stats">
+        <div class="card"><div class="num" id="memCount">0</div><div class="label">Ký ức</div></div>
+        <div class="card"><div class="num" id="chatCount">0</div><div class="label">Tin nhắn</div></div>
+        <div class="card"><div class="num" id="testCount">0</div><div class="label">Tự test</div></div>
+        <div class="card"><div class="num" id="score">--</div><div class="label">Điểm test</div></div>
+      </div>
+
+      <div class="sec">
+        <div class="title">⚙️ Model</div>
+        <select id="model">
+          <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M — nhẹ</option>
+          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B — mạnh hơn</option>
+          <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B — nặng</option>
+        </select>
+        <div class="tip">Model lớn hơn cần nhiều VRAM/RAM hơn. WebLLM hiện công bố khoảng 376 MB VRAM cho SmolLM2 360M q4f16 và khoảng 879 MB cho Llama 3.2 1B q4f16. citeturn386169search0</div>
+      </div>
+
+      <div class="sec">
+        <div class="title">🎓 Dạy AI</div>
+        <input id="teachQ" placeholder="Câu hỏi / kiến thức"/>
+        <textarea id="teachA" placeholder="Câu trả lời hoặc kiến thức đúng"></textarea>
+        <div class="row"><button id="teach">Lưu kiến thức</button><button class="secondary" id="export">Xuất</button></div>
+      </div>
+
+      <div class="sec">
+        <div class="title">🔬 Tự học</div>
+        <div class="small">Tự sinh bài test từ bộ nhớ và tự so sánh câu trả lời. Đây là memory/self-test, không phải tự thay đổi trọng số LLM.</div>
+        <div class="row"><button id="test">Tự test ngay</button><button class="secondary" id="auto">Tự test: TẮT</button></div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="sec">
+        <div class="title">🛠️ Tạo project</div>
+        <div class="small">Yêu cầu AI tạo HTML/CSS/JS hoặc ý tưởng project. Bạn có thể lưu câu trả lời thành file.</div>
+        <button style="width:100%;margin-top:8px" id="project">Tạo mẫu web</button>
+        <button class="secondary" style="width:100%;margin-top:7px" id="download">Tải câu trả lời cuối</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from 'https://esm.run/@mlc-ai/web-llm';
+
+const KEY='ai_deu_local_v2';
+const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+let state={memory:saved.memory||[], chats:saved.chats||0, tests:saved.tests||0, score:saved.score??null};
+let engine=null, currentModel='SmolLM2-360M-Instruct-q4f16_1-MLC', busy=false, autoTimer=null, lastAnswer='';
+const $=id=>document.getElementById(id);
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state));renderStats()}
+function renderStats(){$('memCount').textContent=state.memory.length;$('chatCount').textContent=state.chats;$('testCount').textContent=state.tests;$('score').textContent=state.score==null?'--':Math.round(state.score*100)+'%'}
+function status(x){$('status').textContent=x}
+function log(x){$('log').innerHTML='<div>• '+escapeHtml(x)+'</div>'+$('log').innerHTML}
+function escapeHtml(s){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function add(type,text){let w=document.createElement('div');w.className='m '+type;let b=document.createElement('div');b.className='bubble';b.textContent=text;w.appendChild(b);$('msgs').appendChild(w);$('msgs').scrollTop=$('msgs').scrollHeight}
+function memoryContext(){return state.memory.slice(-40).map(x=>`Q: ${x.q}\nA: ${x.a}`).join('\n\n')}
+
+async function loadModel(){
+  if(busy)return;
+  busy=true; $('loadBtn').disabled=true;
+  currentModel=$('model').value;
+  try{
+    status('⏳ Đang tải model...');
+    engine=await webllm.CreateMLCEngine(currentModel,{initProgressCallback:p=>{status('⬇️ '+Math.round((p.progress||0)*100)+'% '+(p.text||''))}});
+    status('✅ AI local đã sẵn sàng');
+    add('bot','Model local đã sẵn sàng. Tôi không dùng Gemini API.');
+  }catch(e){status('❌ Không tải được model');add('bot','Không chạy được WebGPU/model. Hãy dùng Chrome/Edge mới và bật WebGPU.\n\nLỗi: '+e.message)}
+  finally{busy=false;$('loadBtn').disabled=false}
+}
+
+async function ask(prompt,system='Bạn là AI ĐỂU, trợ lý tiếng Việt thân thiện, hơi hài hước. Trả lời chính xác và ngắn gọn.'){
+  if(!engine) await loadModel();
+  if(!engine)return '';
+  const context=memoryContext();
+  const sys=system+'\nBỘ NHỚ ĐÃ HỌC:\n'+(context||'(chưa có)');
+  const r=await engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:prompt}],temperature:0.7,max_tokens:600});
+  return (r.choices?.[0]?.message?.content||'').trim();
+}
+
+async function send(){
+  const q=$('input').value.trim(); if(!q||busy)return;
+  $('input').value='';add('user',q);busy=true;
+  try{const a=await ask(q);lastAnswer=a;state.chats++;save();add('bot',a)}catch(e){add('bot','Lỗi: '+e.message)}finally{busy=false}
+}
+
+function teach(){
+  const q=$('teachQ').value.trim(),a=$('teachA').value.trim(); if(!q||!a)return alert('Nhập đủ câu hỏi và câu trả lời.');
+  state.memory.push({q,a,t:Date.now()});save();$('teachQ').value='';$('teachA').value='';log('Đã lưu kiến thức mới');add('bot','🎓 Tôi đã ghi nhớ kiến thức này trong trình duyệt của bạn.');
+}
+
+async function selfTest(){
+  if(busy||state.memory.length===0){if(!state.memory.length)log('Chưa có kiến thức để test');return}
+  busy=true;let item=state.memory[Math.floor(Math.random()*state.memory.length)];
+  try{
+    const a=await ask('Tự kiểm tra kiến thức này. Câu hỏi: '+item.q+'\nChỉ trả lời câu trả lời, không giải thích quy trình.', 'Bạn đang làm bài kiểm tra nội bộ. So sánh câu trả lời của mình với kiến thức đã nhớ.');
+    const target=item.a.toLowerCase(), got=a.toLowerCase();
+    const words=target.split(/\s+/).filter(w=>w.length>3);
+    const hits=words.filter(w=>got.includes(w)).length; const score=words.length?hits/words.length:(got.includes(target)?1:0);
+    state.tests++;state.score=state.score==null?score:(state.score*0.8+score*0.2);save();log('Tự test: '+Math.round(score*100)+'%');
+  }catch(e){log('Tự test lỗi: '+e.message)}finally{busy=false}
+}
+
+function project(){
+  $('input').value='Hãy tạo một website landing page hiện đại bằng HTML/CSS/JS thuần, gồm header, hero, nút CTA, 3 tính năng và footer. Trả lời bằng code hoàn chỉnh trong một file HTML.';
+  send();
+}
+function downloadLast(){if(!lastAnswer)return alert('Chưa có câu trả lời để tải.');let b=new Blob([lastAnswer],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-deu-output.txt';a.click();URL.revokeObjectURL(a.href)}
+function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-deu-memory.json';a.click();URL.revokeObjectURL(a.href)}
+function toggleAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;$('auto').textContent='Tự test: TẮT';log('Đã tắt tự test')}else{autoTimer=setInterval(selfTest,5*60*1000);$('auto').textContent='Tự test: BẬT';log('Tự test mỗi 5 phút khi trang đang mở')}}
+
+$('loadBtn').onclick=loadModel;$('send').onclick=send;$('input').onkeydown=e=>{if(e.key==='Enter')send()};$('teach').onclick=teach;$('test').onclick=selfTest;$('auto').onclick=toggleAuto;$('project').onclick=project;$('download').onclick=downloadLast;$('export').onclick=exportData;
+$('clearBtn').onclick=()=>{if(confirm('Xóa toàn bộ bộ nhớ local?')){localStorage.removeItem(KEY);state={memory:[],chats:0,tests:0,score:null};renderStats();log('Đã xóa bộ nhớ')}};
+renderStats();add('bot','Tôi là AI ĐỂU Local Brain. Bấm “Tải AI” để tải model về máy. Sau đó tôi có thể chat không cần API key.');
+</script>
+</body>
+</html>
